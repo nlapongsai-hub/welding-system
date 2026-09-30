@@ -1,12 +1,7 @@
-วาง app.py, index.html, template.docx และ requirements.txt ในโฟลเดอร์เดียวกันบน GitHub
-ติดตั้ง: pip install -r requirements.txt
-Render Start Command (หาก app.py อยู่ root): uvicorn app:app --host 0.0.0.0 --port $PORT
-หากอยู่ใน welding_system และสั่งจาก root: uvicorn welding_system.app:app --host 0.0.0.0 --port $PORT
-ไฟล์นี้รองรับชื่อผลตรวจ *_res ตาม HTML ที่ส่งมา รวม Re-drying SMAW
-รูป JPG/PNG ขนาดไม่เกิน 10 MB ต่อรูป ระบบรักษาสัดส่วนและจำกัดความสูง
-แม่แบบใช้ฟอนต์ Noto Sans Thai หากเครื่องที่เปิด Word ไม่มีฟอนต์นี้ ให้ติดตั้งหรือเลือกฟอนต์ไทยที่มี
-ใช้ข้อความสั้นในช่องข้อมูลและคำบรรยายเพื่อรักษารูปแบบ 2 หน้า ข้อความยาวอาจทำให้หน้าเพิ่ม
-ฐานข้อมูล SQLite เก็บข้อมูลข้อความและผลตรวจ ไม่เก็บรูปถาวร
-หากต้องการเก็บฐานข้อมูลบน Render หลัง deploy/restart ให้ใช้ persistent disk และตั้ง WELDING_DATA_DIR ไปยัง mount path
-
-
+fastapi
+uvicorn
+python-multipart
+docxtpl
+python-docx
+jinja2
+Pillow
