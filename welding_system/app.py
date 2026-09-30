@@ -4,8 +4,9 @@ import sqlite3
 from pathlib import Path
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
-from fastapi import FastAPI, Request, File, Form, UploadFile
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
+from starlette.datastructures import UploadFile
 
 app = FastAPI()
 
@@ -54,39 +55,51 @@ async def read_root():
 
 @app.post("/submit")
 async def submit_inspection(request: Request):
-    # รับข้อมูลทุกฟิลด์ที่ส่งมาจากแบบฟอร์ม HTML
     form = await request.form()
-    form_data = dict(form)
+    
+    # แยกและจัดเก็บรูปภาพทั้ง 6 ช่อง (img_1_1 ถึง img_3_2)
+    saved_images = {}
+    context = {}
 
-    # แยกรูปภาพออกจากฟิลด์ข้อความ
-    photo_fit_up = form.get("photo_fit_up")
-    photo_visual = form.get("photo_visual")
+    CHECKED = "☑"
+    UNCHECKED = "☐"
 
-    fit_up_path = None
-    visual_path = None
+    for key, val in form.items():
+        if isinstance(val, UploadFile):
+            # ตรวจสอบว่ามีการแนบไฟล์รูปมาจริงหรือไม่
+            if val.filename and len(val.filename.strip()) > 0:
+                img_path = UPLOADS_DIR / f"{key}_{val.filename}"
+                with open(img_path, "wb") as f:
+                    f.write(await val.read())
+                saved_images[key] = img_path
+            else:
+                context[key] = ""
+        else:
+            context[key] = str(val)
 
-    if isinstance(photo_fit_up, UploadFile) and photo_fit_up.filename:
-        fit_up_path = UPLOADS_DIR / f"fitup_{photo_fit_up.filename}"
-        with open(fit_up_path, "wb") as f:
-            f.write(await photo_fit_up.read())
+    # จัดการตัวแปรการเช็คถูก Pass / Fail / N/A ให้ลงสัญลักษณ์กล่องสี่เหลี่ยม
+    # หมวด Checklist: ga, ro, rf, cl, ph, vi, dim, suf, pt
+    check_groups = ["ga", "ro", "rf", "cl", "ph", "vi", "dim", "suf", "pt", "p1", "p2", "p3", "p4", "p5"]
+    for group in check_groups:
+        choice = form.get(f"result_{group}") or form.get(f"{group}_result") or form.get(group)
+        choice_str = str(choice).upper() if choice else ""
 
-    if isinstance(photo_visual, UploadFile) and photo_visual.filename:
-        visual_path = UPLOADS_DIR / f"visual_{photo_visual.filename}"
-        with open(visual_path, "wb") as f:
-            f.write(await photo_visual.read())
+        context[f"c_{group}_na"] = CHECKED if "NA" in choice_str or "N/A" in choice_str else UNCHECKED
+        context[f"c_{group}_pass"] = CHECKED if "PASS" in choice_str else UNCHECKED
+        context[f"c_{group}_fail"] = CHECKED if "FAIL" in choice_str else UNCHECKED
 
     # บันทึกลงฐานข้อมูล SQLite
-    project_title = str(form_data.get("project_title", ""))
-    joint_no = str(form_data.get("joint_no", "report"))
-    welder_name = str(form_data.get("welder_name", ""))
+    project_title = str(context.get("project_title", ""))
+    joint_no = str(context.get("joint_no", "report"))
+    welder_name = str(context.get("welder_name", ""))
 
     cursor.execute(
         "INSERT INTO inspections (project_title, joint_no, welder_name, data_json) VALUES (?, ?, ?, ?)",
-        (project_title, joint_no, welder_name, json.dumps({k: str(v) for k, v in form_data.items() if not isinstance(v, UploadFile)}, ensure_ascii=False))
+        (project_title, joint_no, welder_name, json.dumps({k: v for k, v in context.items() if not isinstance(v, (Path, InlineImage))}, ensure_ascii=False))
     )
     conn.commit()
 
-    # ตรวจสอบไฟล์ template.docx
+    # ตรวจสอบและโหลดเทมเพลต Word
     actual_template = TEMPLATE_PATH
     if not actual_template.exists():
         docx_files = list(CURRENT_FILE_DIR.parent.rglob("*.docx"))
@@ -97,41 +110,20 @@ async def submit_inspection(request: Request):
 
     doc = DocxTemplate(str(actual_template))
 
-    # เตรียม Context สำหรับแทนที่ตัวแปรใน Word
-    context = {}
-    for key, val in form_data.items():
-        if not isinstance(val, UploadFile):
-            context[key] = val
+    # นำรูปภาพแปลงเป็น InlineImage ลง Word ตามตำแหน่งจริง
+    photo_slots = ["img_1_1", "img_1_2", "img_2_1", "img_2_2", "img_3_1", "img_3_2"]
+    for slot in photo_slots:
+        if slot in saved_images and saved_images[slot].exists():
+            context[slot] = InlineImage(doc, str(saved_images[slot]), width=Inches(2.8))
+        else:
+            context[slot] = ""
+        # เคลียร์คำบรรยายรูปถ้าไม่มี
+        context.setdefault(slot.replace("img", "cap"), "")
 
-    # รองรับการแมปรูปภาพลงตำแหน่ง {{ img_1_1 }} หรือ {{ img_3_1 }}
-    if fit_up_path and fit_up_path.exists():
-        img_obj = InlineImage(doc, str(fit_up_path), width=Inches(2.5))
-        context["img_1_1"] = img_obj
-        context["photo_fit_up"] = img_obj
-        context["cap_1_1"] = "Fit-up Inspection"
-    else:
-        context["img_1_1"] = ""
-        context["cap_1_1"] = ""
-
-    if visual_path and visual_path.exists():
-        img_obj_v = InlineImage(doc, str(visual_path), width=Inches(2.5))
-        context["img_3_1"] = img_obj_v
-        context["photo_visual"] = img_obj_v
-        context["cap_3_1"] = "Visual Inspection"
-    else:
-        context["img_3_1"] = ""
-        context["cap_3_1"] = ""
-
-    # ดักค่าเริ่มต้นให้ตัวแปรอื่นๆ ไม่ว่างเปล่า
-    for i in range(1, 4):
-        for j in range(1, 3):
-            context.setdefault(f"img_{i}_{j}", "")
-            context.setdefault(f"cap_{i}_{j}", "")
-
-    # **จุดสำคัญที่สุด**: สั่ง Render แทนที่ตัวแปรทั้งหมดลงในเอกสารจริง
+    # แทนค่าลงในเอกสาร
     doc.render(context)
 
-    # บันทึกไฟล์ที่แทนค่าเรียบร้อยแล้ว
+    # ส่งออกไฟล์ Word
     output_filename = f"Inspection_{joint_no}.docx"
     output_filepath = OUTPUT_DIR / output_filename
     doc.save(str(output_filepath))
