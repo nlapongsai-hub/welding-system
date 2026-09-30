@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSC Welding Checklist Form</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #eef2f5; margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        h2 { color: #003366; text-align: center; margin-bottom: 20px; }
+        .section-title { background: #d4edda; color: #155724; padding: 8px 12px; font-weight: bold; border-radius: 5px; margin-top: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { margin-top: 12px; }
+        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #333; }
+        input[type="text"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .radio-box label { font-weight: normal; margin-right: 12px; font-size: 14px; }
+        .photo-card { background: #fdfdfd; border: 1px solid #ddd; padding: 10px; border-radius: 6px; margin-top: 10px; }
+        .submit-btn { margin-top: 30px; width: 100%; padding: 14px; background: #0056b3; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .submit-btn:hover { background: #003d80; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        table, th, td { border: 1px solid #ccc; text-align: center; }
+        th { background: #f1f1f1; padding: 6px; }
+        td input { border: none; text-align: center; width: 90%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>แบบฟอร์มตรวจเช็คงานเชื่อม (BSC)</h2>
+    <form action="/submit" method="post" enctype="multipart/form-data">
+
+        <!-- HEADER -->
+        <div class="grid-2">
+            <div class="form-group"><label>โครงการ (Project Title):</label><input type="text" name="project_title" required></div>
+            <div class="form-group"><label>หมายเลขรอยต่อ (Joint No):</label><input type="text" name="joint_no" required></div>
+            <div class="form-group"><label>ชื่อช่างเชื่อม (Welder Name):</label><input type="text" name="welder_name"></div>
+            <div class="form-group"><label>รหัสช่างเชื่อม (Welder ID):</label><input type="text" name="welder_id"></div>
+            <div class="form-group"><label>กระบวนการ (Process):</label><input type="text" name="process" value="MMAW"></div>
+            <div class="form-group"><label>วันที่ (Date):</label><input type="text" name="date" placeholder="เช่น 1 ก.ย. 2569"></div>
+        </div>
+
+        <!-- SECTION 1 -->
+        <div class="section-title">SECTION 1: BEFORE WELDING CHECK</div>
+        <div class="form-group">
+            <label>Groove Angle (60°):</label>
+            <span class="radio-box">
+                <label><input type="radio" name="ga_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="ga_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="ga_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_ga" placeholder="Remarks เช่น 60°" style="margin-top: 4px;">
+        </div>
+        <div class="form-group">
+            <label>Root Opening (3-4 mm):</label>
+            <span class="radio-box">
+                <label><input type="radio" name="ro_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="ro_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="ro_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_ro" placeholder="Remarks เช่น 3.2 mm" style="margin-top: 4px;">
+        </div>
+        <div class="form-group">
+            <label>Root Face (1.5-2 mm):</label>
+            <span class="radio-box">
+                <label><input type="radio" name="rf_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="rf_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="rf_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_rf" placeholder="Remarks" style="margin-top: 4px;">
+        </div>
+        <div class="form-group">
+            <label>Cleaning:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="cl_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="cl_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="cl_res" value="N/A"> N/A</label>
+            </span>
+        </div>
+        <div class="form-group">
+            <label>Preheat Temperature (Min 21°C):</label>
+            <span class="radio-box">
+                <label><input type="radio" name="ph_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="ph_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="ph_res" value="N/A"> N/A</label>
+            </span>
+        </div>
+        <div class="form-group">
+            <label>Re-drying SMAW:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="rd_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="rd_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="rd_res" value="N/A"> N/A</label>
+            </span>
+        </div>
+
+        <!-- SECTION 2 -->
+        <div class="section-title">SECTION 2: DURING WELDING CHECK</div>
+        <table>
+            <tr>
+                <th>Pass</th><th>Polarity</th><th>Amps</th><th>Volts</th><th>Speed</th><th>Interpass Temp</th>
+            </tr>
+            <tr>
+                <td>Root Run</td>
+                <td><input type="text" name="p1_type" value="DC+"></td>
+                <td><input type="text" name="p1_amp" value="100"></td>
+                <td><input type="text" name="p1_volt" value="25"></td>
+                <td><input type="text" name="p1_spd" value="100"></td>
+                <td><select name="p1_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
+            </tr>
+            <tr>
+                <td>Hot Pass</td>
+                <td><input type="text" name="p2_type" value="DC+"></td>
+                <td><input type="text" name="p2_amp" value="100"></td>
+                <td><input type="text" name="p2_volt" value="25"></td>
+                <td><input type="text" name="p2_spd" value="110"></td>
+                <td><select name="p2_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
+            </tr>
+            <tr>
+                <td>Fill 1</td>
+                <td><input type="text" name="p3_type" value="DC+"></td>
+                <td><input type="text" name="p3_amp" value="100"></td>
+                <td><input type="text" name="p3_volt" value="24"></td>
+                <td><input type="text" name="p3_spd" value="120"></td>
+                <td><select name="p3_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
+            </tr>
+            <tr>
+                <td>Fill 2</td>
+                <td><input type="text" name="p4_type" value="DC+"></td>
+                <td><input type="text" name="p4_amp" value="100"></td>
+                <td><input type="text" name="p4_volt" value="24"></td>
+                <td><input type="text" name="p4_spd" value="120"></td>
+                <td><select name="p4_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
+            </tr>
+            <tr>
+                <td>Cap Layer</td>
+                <td><input type="text" name="p5_type" value="DC+"></td>
+                <td><input type="text" name="p5_amp" value="100"></td>
+                <td><input type="text" name="p5_volt" value="25"></td>
+                <td><input type="text" name="p5_spd" value="120"></td>
+                <td><select name="p5_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
+            </tr>
+        </table>
+
+        <!-- SECTION 3 -->
+        <div class="section-title">SECTION 3: AFTER WELDING CHECK</div>
+        <div class="form-group">
+            <label>Visual Inspection:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="vi_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="vi_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="vi_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_vi" placeholder="Remarks">
+        </div>
+        <div class="form-group">
+            <label>Post-Weld Dimensions:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="dim_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="dim_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="dim_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_dim" placeholder="Remarks">
+        </div>
+        <div class="form-group">
+            <label>Surface Defect Check:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="suf_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="suf_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="suf_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_suf" placeholder="Remarks">
+        </div>
+        <div class="form-group">
+            <label>NDT PT:</label>
+            <span class="radio-box">
+                <label><input type="radio" name="pt_res" value="Pass" checked> Pass</label>
+                <label><input type="radio" name="pt_res" value="Fail"> Fail</label>
+                <label><input type="radio" name="pt_res" value="N/A"> N/A</label>
+            </span>
+            <input type="text" name="r_pt" placeholder="Remarks">
+        </div>
+
+        <!-- PHOTOGRAPHS -->
+        <div class="section-title">ภาพถ่ายประกอบ (แนบหรือถ่ายภาพสด)</div>
+        
+        <div class="grid-2">
+            <div class="photo-card">
+                <label>ภาพ 1.1 (Before):</label>
+                <input type="file" name="img_1_1" accept="image/*" capture="environment">
+                <input type="text" name="cap_1_1" placeholder="คำบรรยาย 1.1" style="margin-top:5px;">
+            </div>
+            <div class="photo-card">
+                <label>ภาพ 1.2 (Before):</label>
+                <input type="file" name="img_1_2" accept="image/*" capture="environment">
+                <input type="text" name="cap_1_2" placeholder="คำบรรยาย 1.2" style="margin-top:5px;">
+            </div>
+            <div class="photo-card">
+                <label>ภาพ 2.1 (During):</label>
+                <input type="file" name="img_2_1" accept="image/*" capture="environment">
+                <input type="text" name="cap_2_1" placeholder="คำบรรยาย 2.1" style="margin-top:5px;">
+            </div>
+            <div class="photo-card">
+                <label>ภาพ 2.2 (During):</label>
+                <input type="file" name="img_2_2" accept="image/*" capture="environment">
+                <input type="text" name="cap_2_2" placeholder="คำบรรยาย 2.2" style="margin-top:5px;">
+            </div>
+            <div class="photo-card">
+                <label>ภาพ 3.1 (After):</label>
+                <input type="file" name="img_3_1" accept="image/*" capture="environment">
+                <input type="text" name="cap_3_1" placeholder="คำบรรยาย 3.1" style="margin-top:5px;">
+            </div>
+            <div class="photo-card">
+                <label>ภาพ 3.2 (After):</label>
+                <input type="file" name="img_3_2" accept="image/*" capture="environment">
+                <input type="text" name="cap_3_2" placeholder="คำบรรยาย 3.2" style="margin-top:5px;">
+            </div>
+        </div>
+
+        <button type="submit" class="submit-btn">💾 บันทึกข้อมูลและสร้างรายงาน</button>
+    </form>
+</div>
+
+</body>
+</html>
+
