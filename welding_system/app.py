@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+import traceback
 from pathlib import Path
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
@@ -55,81 +56,95 @@ async def read_root():
 
 @app.post("/submit")
 async def submit_inspection(request: Request):
-    form = await request.form()
-    
-    # แยกและจัดเก็บรูปภาพทั้ง 6 ช่อง (img_1_1 ถึง img_3_2)
-    saved_images = {}
-    context = {}
+    try:
+        form = await request.form()
+        
+        saved_images = {}
+        context = {}
 
-    CHECKED = "☑"
-    UNCHECKED = "☐"
+        CHECKED = "☑"
+        UNCHECKED = "☐"
 
-    for key, val in form.items():
-        if isinstance(val, UploadFile):
-            # ตรวจสอบว่ามีการแนบไฟล์รูปมาจริงหรือไม่
-            if val.filename and len(val.filename.strip()) > 0:
-                img_path = UPLOADS_DIR / f"{key}_{val.filename}"
-                with open(img_path, "wb") as f:
-                    f.write(await val.read())
-                saved_images[key] = img_path
+        # 1. จัดการแยกไฟล์รูปและข้อความ
+        for key, val in form.items():
+            if isinstance(val, UploadFile):
+                if val.filename and len(val.filename.strip()) > 0:
+                    content = await val.read()
+                    if len(content) > 0:
+                        img_path = UPLOADS_DIR / f"{key}_{val.filename}"
+                        with open(img_path, "wb") as f:
+                            f.write(content)
+                        saved_images[key] = img_path
+                    else:
+                        context[key] = " "
+                else:
+                    context[key] = " "
             else:
-                context[key] = ""
-        else:
-            context[key] = str(val)
+                context[key] = str(val)
 
-    # จัดการตัวแปรการเช็คถูก Pass / Fail / N/A ให้ลงสัญลักษณ์กล่องสี่เหลี่ยม
-    # หมวด Checklist: ga, ro, rf, cl, ph, vi, dim, suf, pt
-    check_groups = ["ga", "ro", "rf", "cl", "ph", "vi", "dim", "suf", "pt", "p1", "p2", "p3", "p4", "p5"]
-    for group in check_groups:
-        choice = form.get(f"result_{group}") or form.get(f"{group}_result") or form.get(group)
-        choice_str = str(choice).upper() if choice else ""
+        # 2. จัดการตัวแปรติ๊กถูก Pass / Fail / N/A
+        check_groups = ["ga", "ro", "rf", "cl", "ph", "vi", "dim", "suf", "pt", "p1", "p2", "p3", "p4", "p5"]
+        for group in check_groups:
+            choice = form.get(f"result_{group}") or form.get(f"{group}_result") or form.get(group)
+            choice_str = str(choice).upper() if choice else ""
 
-        context[f"c_{group}_na"] = CHECKED if "NA" in choice_str or "N/A" in choice_str else UNCHECKED
-        context[f"c_{group}_pass"] = CHECKED if "PASS" in choice_str else UNCHECKED
-        context[f"c_{group}_fail"] = CHECKED if "FAIL" in choice_str else UNCHECKED
+            context[f"c_{group}_na"] = CHECKED if ("NA" in choice_str or "N/A" in choice_str) else UNCHECKED
+            context[f"c_{group}_pass"] = CHECKED if "PASS" in choice_str else UNCHECKED
+            context[f"c_{group}_fail"] = CHECKED if "FAIL" in choice_str else UNCHECKED
 
-    # บันทึกลงฐานข้อมูล SQLite
-    project_title = str(context.get("project_title", ""))
-    joint_no = str(context.get("joint_no", "report"))
-    welder_name = str(context.get("welder_name", ""))
+        # 3. บันทึกข้อมูลลงฐานข้อมูล SQLite
+        project_title = str(context.get("project_title", ""))
+        joint_no = str(context.get("joint_no", "report"))
+        welder_name = str(context.get("welder_name", ""))
 
-    cursor.execute(
-        "INSERT INTO inspections (project_title, joint_no, welder_name, data_json) VALUES (?, ?, ?, ?)",
-        (project_title, joint_no, welder_name, json.dumps({k: v for k, v in context.items() if not isinstance(v, (Path, InlineImage))}, ensure_ascii=False))
-    )
-    conn.commit()
+        db_dict = {k: v for k, v in context.items() if not isinstance(v, (Path, InlineImage))}
+        cursor.execute(
+            "INSERT INTO inspections (project_title, joint_no, welder_name, data_json) VALUES (?, ?, ?, ?)",
+            (project_title, joint_no, welder_name, json.dumps(db_dict, ensure_ascii=False))
+        )
+        conn.commit()
 
-    # ตรวจสอบและโหลดเทมเพลต Word
-    actual_template = TEMPLATE_PATH
-    if not actual_template.exists():
-        docx_files = list(CURRENT_FILE_DIR.parent.rglob("*.docx"))
-        if docx_files:
-            actual_template = docx_files[0]
-        else:
-            return HTMLResponse(content="<h1>หาไฟล์ template.docx ไม่พบในระบบ</h1>", status_code=500)
+        # 4. ตรวจสอบไฟล์ template.docx
+        actual_template = TEMPLATE_PATH
+        if not actual_template.exists():
+            docx_files = list(CURRENT_FILE_DIR.parent.rglob("*.docx"))
+            if docx_files:
+                actual_template = docx_files[0]
+            else:
+                return HTMLResponse(content="<h1>หาไฟล์ template.docx ไม่พบในระบบ</h1>", status_code=500)
 
-    doc = DocxTemplate(str(actual_template))
+        doc = DocxTemplate(str(actual_template))
 
-    # นำรูปภาพแปลงเป็น InlineImage ลง Word ตามตำแหน่งจริง
-    photo_slots = ["img_1_1", "img_1_2", "img_2_1", "img_2_2", "img_3_1", "img_3_2"]
-    for slot in photo_slots:
-        if slot in saved_images and saved_images[slot].exists():
-            context[slot] = InlineImage(doc, str(saved_images[slot]), width=Inches(2.8))
-        else:
-            context[slot] = ""
-        # เคลียร์คำบรรยายรูปถ้าไม่มี
-        context.setdefault(slot.replace("img", "cap"), "")
+        # 5. แมปรูปภาพลงตัวแปร Word (ใช้ช่องว่างแทน None/Empty เพื่อป้องกัน docxtpl พัง)
+        photo_slots = ["img_1_1", "img_1_2", "img_2_1", "img_2_2", "img_3_1", "img_3_2"]
+        for slot in photo_slots:
+            if slot in saved_images and saved_images[slot].exists():
+                try:
+                    context[slot] = InlineImage(doc, str(saved_images[slot]), width=Inches(2.5))
+                except Exception:
+                    context[slot] = " "
+            else:
+                context[slot] = " "
+            context.setdefault(slot.replace("img", "cap"), " ")
 
-    # แทนค่าลงในเอกสาร
-    doc.render(context)
+        # 6. ประมวลผลเอกสาร Word
+        doc.render(context)
 
-    # ส่งออกไฟล์ Word
-    output_filename = f"Inspection_{joint_no}.docx"
-    output_filepath = OUTPUT_DIR / output_filename
-    doc.save(str(output_filepath))
+        # 7. บันทึกและส่งไฟล์กลับ
+        safe_joint = "".join(c for c in joint_no if c.isalnum() or c in ("-", "_")).strip() or "report"
+        output_filename = f"Inspection_{safe_joint}.docx"
+        output_filepath = OUTPUT_DIR / output_filename
+        doc.save(str(output_filepath))
 
-    return FileResponse(
-        path=str(output_filepath),
-        filename=output_filename,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+        return FileResponse(
+            path=str(output_filepath),
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+    except Exception as e:
+        error_detail = traceback.format_exc()
+        return HTMLResponse(
+            content=f"<h3>เกิดข้อผิดพลาดในการประมวลผล:</h3><pre>{error_detail}</pre>",
+            status_code=500
+        )
