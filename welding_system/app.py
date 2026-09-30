@@ -4,28 +4,23 @@ import sqlite3
 from pathlib import Path
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, Request, File, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 
 app = FastAPI()
 
 CURRENT_FILE_DIR = Path(__file__).resolve().parent
 
-# ฟังก์ชันค้นหาไฟล์แบบยืดหยุ่น: หาชื่อปกติ หรือชื่อแบบมีเว้นวรรคนำหน้า
 def find_project_file(possible_names: list) -> Path:
     for name in possible_names:
-        # 1. โฟลเดอร์เดียวกับ app.py
         if (CURRENT_FILE_DIR / name).exists():
             return CURRENT_FILE_DIR / name
-        # 2. โฟลเดอร์นอก
         if (CURRENT_FILE_DIR.parent / name).exists():
             return CURRENT_FILE_DIR.parent / name
-        # 3. ค้นหาทั่วระบบ
         for path in CURRENT_FILE_DIR.parent.rglob(name):
             return path
     return CURRENT_FILE_DIR / possible_names[0]
 
-# ดักจับทั้ง "template.docx" และ " template.docx" ที่มีเว้นวรรค
 TEMPLATE_PATH = find_project_file(["template.docx", " template.docx"])
 INDEX_PATH = find_project_file(["index.html", " index.html"])
 DB_PATH = CURRENT_FILE_DIR / "welding_database.db"
@@ -58,77 +53,86 @@ async def read_root():
         return HTMLResponse(content=f.read())
 
 @app.post("/submit")
-async def submit_inspection(
-    project_title: str = Form(""),
-    joint_no: str = Form(""),
-    welder_name: str = Form(""),
-    inspector: str = Form(""),
-    date: str = Form(""),
-    welding_process: str = Form(""),
-    wps_no: str = Form(""),
-    drawing_no: str = Form(""),
-    fit_up_result: str = Form("PASS"),
-    visual_result: str = Form("PASS"),
-    remarks: str = Form(""),
-    photo_fit_up: UploadFile = File(None),
-    photo_visual: UploadFile = File(None),
-):
+async def submit_inspection(request: Request):
+    # รับข้อมูลทุกฟิลด์ที่ส่งมาจากแบบฟอร์ม HTML
+    form = await request.form()
+    form_data = dict(form)
+
+    # แยกรูปภาพออกจากฟิลด์ข้อความ
+    photo_fit_up = form.get("photo_fit_up")
+    photo_visual = form.get("photo_visual")
+
     fit_up_path = None
     visual_path = None
 
-    if photo_fit_up and photo_fit_up.filename:
+    if isinstance(photo_fit_up, UploadFile) and photo_fit_up.filename:
         fit_up_path = UPLOADS_DIR / f"fitup_{photo_fit_up.filename}"
         with open(fit_up_path, "wb") as f:
             f.write(await photo_fit_up.read())
 
-    if photo_visual and photo_visual.filename:
+    if isinstance(photo_visual, UploadFile) and photo_visual.filename:
         visual_path = UPLOADS_DIR / f"visual_{photo_visual.filename}"
         with open(visual_path, "wb") as f:
             f.write(await photo_visual.read())
 
-    record_data = {
-        "project_title": project_title,
-        "joint_no": joint_no,
-        "welder_name": welder_name,
-        "inspector": inspector,
-        "date": date,
-        "welding_process": welding_process,
-        "wps_no": wps_no,
-        "drawing_no": drawing_no,
-        "fit_up_result": fit_up_result,
-        "visual_result": visual_result,
-        "remarks": remarks,
-    }
+    # บันทึกลงฐานข้อมูล SQLite
+    project_title = str(form_data.get("project_title", ""))
+    joint_no = str(form_data.get("joint_no", "report"))
+    welder_name = str(form_data.get("welder_name", ""))
+
     cursor.execute(
         "INSERT INTO inspections (project_title, joint_no, welder_name, data_json) VALUES (?, ?, ?, ?)",
-        (project_title, joint_no, welder_name, json.dumps(record_data, ensure_ascii=False))
+        (project_title, joint_no, welder_name, json.dumps({k: str(v) for k, v in form_data.items() if not isinstance(v, UploadFile)}, ensure_ascii=False))
     )
     conn.commit()
 
-    # ตรวจสอบอีกครั้งก่อนเปิดเทมเพลต
+    # ตรวจสอบไฟล์ template.docx
     actual_template = TEMPLATE_PATH
     if not actual_template.exists():
-        # ถ้ายังไม่เจอ ให้กวาดหาไฟล์ที่มีนามสกุล .docx ทุกตัวในระบบ
         docx_files = list(CURRENT_FILE_DIR.parent.rglob("*.docx"))
         if docx_files:
             actual_template = docx_files[0]
         else:
-            return HTMLResponse(content="<h1>หาไฟล์ .docx ไม่พบเลยในระบบ</h1>", status_code=500)
+            return HTMLResponse(content="<h1>หาไฟล์ template.docx ไม่พบในระบบ</h1>", status_code=500)
 
     doc = DocxTemplate(str(actual_template))
-    context = dict(record_data)
 
+    # เตรียม Context สำหรับแทนที่ตัวแปรใน Word
+    context = {}
+    for key, val in form_data.items():
+        if not isinstance(val, UploadFile):
+            context[key] = val
+
+    # รองรับการแมปรูปภาพลงตำแหน่ง {{ img_1_1 }} หรือ {{ img_3_1 }}
     if fit_up_path and fit_up_path.exists():
-        context["photo_fit_up"] = InlineImage(doc, str(fit_up_path), width=Inches(2.5))
+        img_obj = InlineImage(doc, str(fit_up_path), width=Inches(2.5))
+        context["img_1_1"] = img_obj
+        context["photo_fit_up"] = img_obj
+        context["cap_1_1"] = "Fit-up Inspection"
     else:
-        context["photo_fit_up"] = "ไม่มีรูปภาพ"
+        context["img_1_1"] = ""
+        context["cap_1_1"] = ""
 
     if visual_path and visual_path.exists():
-        context["photo_visual"] = InlineImage(doc, str(visual_path), width=Inches(2.5))
+        img_obj_v = InlineImage(doc, str(visual_path), width=Inches(2.5))
+        context["img_3_1"] = img_obj_v
+        context["photo_visual"] = img_obj_v
+        context["cap_3_1"] = "Visual Inspection"
     else:
-        context["photo_visual"] = "ไม่มีรูปภาพ"
+        context["img_3_1"] = ""
+        context["cap_3_1"] = ""
 
-    output_filename = f"Inspection_{joint_no or 'report'}.docx"
+    # ดักค่าเริ่มต้นให้ตัวแปรอื่นๆ ไม่ว่างเปล่า
+    for i in range(1, 4):
+        for j in range(1, 3):
+            context.setdefault(f"img_{i}_{j}", "")
+            context.setdefault(f"cap_{i}_{j}", "")
+
+    # **จุดสำคัญที่สุด**: สั่ง Render แทนที่ตัวแปรทั้งหมดลงในเอกสารจริง
+    doc.render(context)
+
+    # บันทึกไฟล์ที่แทนค่าเรียบร้อยแล้ว
+    output_filename = f"Inspection_{joint_no}.docx"
     output_filepath = OUTPUT_DIR / output_filename
     doc.save(str(output_filepath))
 
