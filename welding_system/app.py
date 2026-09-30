@@ -9,23 +9,25 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 app = FastAPI()
 
-# ค้นหาตำแหน่งไฟล์ template.docx และ index.html แบบสแกนอัตโนมัติ
 CURRENT_FILE_DIR = Path(__file__).resolve().parent
 
-def find_project_file(filename: str) -> Path:
-    # 1. เช็กที่โฟลเดอร์เดียวกับ app.py
-    if (CURRENT_FILE_DIR / filename).exists():
-        return CURRENT_FILE_DIR / filename
-    # 2. เช็กที่โฟลเดอร์ชั้นนอก
-    if (CURRENT_FILE_DIR.parent / filename).exists():
-        return CURRENT_FILE_DIR.parent / filename
-    # 3. สแกนหาทั่วทั้งโฟลเดอร์โปรเจกต์
-    for path in CURRENT_FILE_DIR.parent.rglob(filename):
-        return path
-    return CURRENT_FILE_DIR / filename
+# ฟังก์ชันค้นหาไฟล์แบบยืดหยุ่น: หาชื่อปกติ หรือชื่อแบบมีเว้นวรรคนำหน้า
+def find_project_file(possible_names: list) -> Path:
+    for name in possible_names:
+        # 1. โฟลเดอร์เดียวกับ app.py
+        if (CURRENT_FILE_DIR / name).exists():
+            return CURRENT_FILE_DIR / name
+        # 2. โฟลเดอร์นอก
+        if (CURRENT_FILE_DIR.parent / name).exists():
+            return CURRENT_FILE_DIR.parent / name
+        # 3. ค้นหาทั่วระบบ
+        for path in CURRENT_FILE_DIR.parent.rglob(name):
+            return path
+    return CURRENT_FILE_DIR / possible_names[0]
 
-TEMPLATE_PATH = find_project_file("template.docx")
-INDEX_PATH = find_project_file("index.html")
+# ดักจับทั้ง "template.docx" และ " template.docx" ที่มีเว้นวรรค
+TEMPLATE_PATH = find_project_file(["template.docx", " template.docx"])
+INDEX_PATH = find_project_file(["index.html", " index.html"])
 DB_PATH = CURRENT_FILE_DIR / "welding_database.db"
 
 UPLOADS_DIR = CURRENT_FILE_DIR / "uploads"
@@ -33,7 +35,7 @@ OUTPUT_DIR = CURRENT_FILE_DIR / "output"
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# เชื่อมต่อฐานข้อมูล SQLite
+# เชื่อมต่อ SQLite
 conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute("""
@@ -51,11 +53,7 @@ conn.commit()
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     if not INDEX_PATH.exists():
-        # แสดงตำแหน่งไฟล์ที่ระบบหาเพื่อตรวจสอบได้ทันที
-        return HTMLResponse(
-            content=f"<h3>ไม่พบ index.html</h3><p>ตรวจหาที่: {INDEX_PATH}</p><p>ไฟล์ทั้งหมดที่มี: {[p.name for p in CURRENT_FILE_DIR.parent.rglob('*')]}</p>",
-            status_code=404
-        )
+        return HTMLResponse(content="<h1>ไม่พบ index.html</h1>", status_code=404)
     with open(INDEX_PATH, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
@@ -107,15 +105,17 @@ async def submit_inspection(
     )
     conn.commit()
 
-    # ถ้ายังหาไม่เจอ ฟังก์ชันจะบอกรายชื่อไฟล์ทั้งหมดที่ Render มองเห็น
-    if not TEMPLATE_PATH.exists():
-        all_files = [str(p) for p in CURRENT_FILE_DIR.parent.rglob("*.*")]
-        return HTMLResponse(
-            content=f"<h3>ยังหา template.docx ไม่พบ</h3><p>ไฟล์ทั้งหมดที่เซิร์ฟเวอร์มองเห็นคือ: {all_files}</p>",
-            status_code=500
-        )
+    # ตรวจสอบอีกครั้งก่อนเปิดเทมเพลต
+    actual_template = TEMPLATE_PATH
+    if not actual_template.exists():
+        # ถ้ายังไม่เจอ ให้กวาดหาไฟล์ที่มีนามสกุล .docx ทุกตัวในระบบ
+        docx_files = list(CURRENT_FILE_DIR.parent.rglob("*.docx"))
+        if docx_files:
+            actual_template = docx_files[0]
+        else:
+            return HTMLResponse(content="<h1>หาไฟล์ .docx ไม่พบเลยในระบบ</h1>", status_code=500)
 
-    doc = DocxTemplate(str(TEMPLATE_PATH))
+    doc = DocxTemplate(str(actual_template))
     context = dict(record_data)
 
     if fit_up_path and fit_up_path.exists():
