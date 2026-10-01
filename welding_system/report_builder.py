@@ -19,7 +19,7 @@ def project_file(name):
     return BASE_DIR / name
 
 def build_report(fields, images):
-    template = project_file("template.docx")
+    template = project_file("template-2.docx")
     if not template.is_file():
         raise FileNotFoundError("ไม่พบ template.docx กรุณาวางไฟล์ไว้ในโฟลเดอร์เดียวกับ app.py")
     doc = DocxTemplate(str(template))
