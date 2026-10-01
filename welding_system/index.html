@@ -12,7 +12,7 @@
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .form-group { margin-top: 12px; }
         label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #333; }
-        input[type="text"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .radio-box label { font-weight: normal; margin-right: 12px; font-size: 14px; }
         .photo-card { background: #fdfdfd; border: 1px solid #ddd; padding: 10px; border-radius: 6px; margin-top: 10px; }
         .submit-btn { margin-top: 30px; width: 100%; padding: 14px; background: #0056b3; color: white; border: none; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }
@@ -21,7 +21,7 @@
         table, th, td { border: 1px solid #ccc; text-align: center; }
         th { background: #f1f1f1; padding: 6px; }
         td input { border: none; text-align: center; width: 90%; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } .container { padding: 15px; } }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } .container { padding: 15px; } }
         .table-scroll { overflow-x: auto; }
     </style>
 </head>
@@ -100,46 +100,46 @@
         <div class="section-title">SECTION 2: DURING WELDING CHECK</div>
         <div class="table-scroll"><table>
             <tr>
-                <th>Pass</th><th>Polarity</th><th>Amps</th><th>Volts</th><th>Speed</th><th>Interpass Temp</th>
+                <th>Weld Pass(es)</th><th>Current Type<br>&amp; Polarity</th><th>Current<br>(Amps)</th><th>Voltage<br>(Volts)</th><th>Travel Speed<br>(mm/min)</th><th>Interpass Temp</th>
             </tr>
             <tr>
                 <td>Root Run</td>
-                <td><input type="text" name="p1_type" value="DC+"></td>
-                <td><input type="text" name="p1_amp" value="100"></td>
-                <td><input type="text" name="p1_volt" value="25"></td>
-                <td><input type="text" name="p1_spd" value="100"></td>
+                <td><select name="p1_type" aria-label="Current Type and Polarity แถว 1"><option value="DC+">DC+</option><option value="DC-">DC-</option></select></td>
+                <td><input type="number" name="p1_amp" min="0" step="any" inputmode="decimal" aria-label="Current (Amps) แถว 1"></td>
+                <td><input type="number" name="p1_volt" min="0" step="any" inputmode="decimal" aria-label="Voltage (Volts) แถว 1"></td>
+                <td><input type="number" name="p1_spd" min="0" step="any" inputmode="decimal" aria-label="Travel Speed (mm/min) แถว 1"></td>
                 <td><select name="p1_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
             <tr>
                 <td>Hot Pass</td>
-                <td><input type="text" name="p2_type" value="DC+"></td>
-                <td><input type="text" name="p2_amp" value="100"></td>
-                <td><input type="text" name="p2_volt" value="25"></td>
-                <td><input type="text" name="p2_spd" value="110"></td>
+                <td><select name="p2_type" aria-label="Current Type and Polarity แถว 2"><option value="DC+">DC+</option><option value="DC-">DC-</option></select></td>
+                <td><input type="number" name="p2_amp" min="0" step="any" inputmode="decimal" aria-label="Current (Amps) แถว 2"></td>
+                <td><input type="number" name="p2_volt" min="0" step="any" inputmode="decimal" aria-label="Voltage (Volts) แถว 2"></td>
+                <td><input type="number" name="p2_spd" min="0" step="any" inputmode="decimal" aria-label="Travel Speed (mm/min) แถว 2"></td>
                 <td><select name="p2_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
             <tr>
                 <td>Fill 1</td>
-                <td><input type="text" name="p3_type" value="DC+"></td>
-                <td><input type="text" name="p3_amp" value="100"></td>
-                <td><input type="text" name="p3_volt" value="24"></td>
-                <td><input type="text" name="p3_spd" value="120"></td>
+                <td><select name="p3_type" aria-label="Current Type and Polarity แถว 3"><option value="DC+">DC+</option><option value="DC-">DC-</option></select></td>
+                <td><input type="number" name="p3_amp" min="0" step="any" inputmode="decimal" aria-label="Current (Amps) แถว 3"></td>
+                <td><input type="number" name="p3_volt" min="0" step="any" inputmode="decimal" aria-label="Voltage (Volts) แถว 3"></td>
+                <td><input type="number" name="p3_spd" min="0" step="any" inputmode="decimal" aria-label="Travel Speed (mm/min) แถว 3"></td>
                 <td><select name="p3_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
             <tr>
                 <td>Fill 2</td>
-                <td><input type="text" name="p4_type" value="DC+"></td>
-                <td><input type="text" name="p4_amp" value="100"></td>
-                <td><input type="text" name="p4_volt" value="24"></td>
-                <td><input type="text" name="p4_spd" value="120"></td>
+                <td><select name="p4_type" aria-label="Current Type and Polarity แถว 4"><option value="DC+">DC+</option><option value="DC-">DC-</option></select></td>
+                <td><input type="number" name="p4_amp" min="0" step="any" inputmode="decimal" aria-label="Current (Amps) แถว 4"></td>
+                <td><input type="number" name="p4_volt" min="0" step="any" inputmode="decimal" aria-label="Voltage (Volts) แถว 4"></td>
+                <td><input type="number" name="p4_spd" min="0" step="any" inputmode="decimal" aria-label="Travel Speed (mm/min) แถว 4"></td>
                 <td><select name="p4_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
             <tr>
                 <td>Cap Layer</td>
-                <td><input type="text" name="p5_type" value="DC+"></td>
-                <td><input type="text" name="p5_amp" value="100"></td>
-                <td><input type="text" name="p5_volt" value="25"></td>
-                <td><input type="text" name="p5_spd" value="120"></td>
+                <td><select name="p5_type" aria-label="Current Type and Polarity แถว 5"><option value="DC+">DC+</option><option value="DC-">DC-</option></select></td>
+                <td><input type="number" name="p5_amp" min="0" step="any" inputmode="decimal" aria-label="Current (Amps) แถว 5"></td>
+                <td><input type="number" name="p5_volt" min="0" step="any" inputmode="decimal" aria-label="Voltage (Volts) แถว 5"></td>
+                <td><input type="number" name="p5_spd" min="0" step="any" inputmode="decimal" aria-label="Travel Speed (mm/min) แถว 5"></td>
                 <td><select name="p5_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
         </table></div>
@@ -237,4 +237,3 @@ window.addEventListener('pageshow', function() {
 </script>
 </body>
 </html>
-```[span_1](start_span)[span_1](end_span)
