@@ -21,12 +21,15 @@
         table, th, td { border: 1px solid #ccc; text-align: center; }
         th { background: #f1f1f1; padding: 6px; }
         td input { border: none; text-align: center; width: 90%; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } .container { padding: 15px; } }
+        .table-scroll { overflow-x: auto; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>แบบฟอร์มตรวจเช็คงานเชื่อม (BSC)</h2>
+    <p style="text-align:center"><a href="/reports">เปิดคลังรายงานย้อนหลัง</a></p>
     <form action="/submit" method="post" enctype="multipart/form-data">
 
         <!-- HEADER -->
@@ -95,7 +98,7 @@
 
         <!-- SECTION 2 -->
         <div class="section-title">SECTION 2: DURING WELDING CHECK</div>
-        <table>
+        <div class="table-scroll"><table>
             <tr>
                 <th>Pass</th><th>Polarity</th><th>Amps</th><th>Volts</th><th>Speed</th><th>Interpass Temp</th>
             </tr>
@@ -139,7 +142,7 @@
                 <td><input type="text" name="p5_spd" value="120"></td>
                 <td><select name="p5_res"><option value="Pass">Pass</option><option value="Fail">Fail</option></select></td>
             </tr>
-        </table>
+        </table></div>
 
         <!-- SECTION 3 -->
         <div class="section-title">SECTION 3: AFTER WELDING CHECK</div>
@@ -216,9 +219,22 @@
             </div>
         </div>
 
-        <button type="submit" class="submit-btn">💾 บันทึกข้อมูลและสร้างรายงาน</button>
+        <button type="submit" class="submit-btn">💾 สร้างรายงานและบันทึกเข้าคลัง</button>
     </form>
 </div>
 
+<script>
+document.querySelector('form').addEventListener('submit', function() {
+  const button = this.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'กำลังสร้างและบันทึกรายงาน กรุณารอสักครู่…';
+});
+window.addEventListener('pageshow', function() {
+  const button = document.querySelector('button[type="submit"]');
+  button.disabled = false;
+  button.textContent = '💾 สร้างรายงานและบันทึกเข้าคลัง';
+});
+</script>
 </body>
 </html>
+```[span_1](start_span)[span_1](end_span)
